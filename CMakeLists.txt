@@ -1,155 +1,192 @@
 cmake_minimum_required(VERSION 2.8.12)
 
-# automagically detect if we should cross-compile
+#cmake   -DCMAKE_BUILD_TYPE=Debug   -DCMAKE_INSTALL_PREFIX=$HOME/libiec61850/stage ..
+#cmake -DIEC61850_ROOT=$HOME/libiec61850/stage -DCMAKE_BUILD_TYPE=Debug ..
+
+# ------------------------------------------------------------------------------
+# Toolchain / Cross compile
+# ------------------------------------------------------------------------------
 if(DEFINED ENV{TOOLCHAIN})
-    set(CMAKE_C_COMPILER	$ENV{TOOLCHAIN}gcc)
-    set(CMAKE_CXX_COMPILER	$ENV{TOOLCHAIN}g++)
-    set(CMAKE_AR	"$ENV{TOOLCHAIN}ar" CACHE FILEPATH "CW archiver" FORCE)
+    set(CMAKE_C_COMPILER   $ENV{TOOLCHAIN}gcc)
+    set(CMAKE_CXX_COMPILER $ENV{TOOLCHAIN}g++)
+    set(CMAKE_AR           "$ENV{TOOLCHAIN}ar" CACHE FILEPATH "Archiver" FORCE)
 endif()
 
-project(iec61850-open-server)
+project(iec61850-open-server C)
 
-ENABLE_TESTING()
+enable_testing()
 
-set(PROJECT_VERSION_MAJOR "0")
-set(PROJECT_VERSION_MINOR "9")
-set(PROJECT_VERSION_PATCH "0")
-set(PROJECT_VERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}")
+# ------------------------------------------------------------------------------
+# Version
+# ------------------------------------------------------------------------------
+set(PROJECT_VERSION_MAJOR 0)
+set(PROJECT_VERSION_MINOR 9)
+set(PROJECT_VERSION_PATCH 0)
+set(PROJECT_VERSION
+    "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}"
+)
 
-set(CMAKE_EXECUTABLE_ENABLE_EXPORTS, TRUE)
+# ------------------------------------------------------------------------------
+# Options
+# ------------------------------------------------------------------------------
+option(DEBUG "Enable debugging" ON)
+option(BUILD_PLUGINS "Build the plugins" ON)
 
-# feature checks
+if(DEBUG)
+    set(CMAKE_BUILD_TYPE Debug CACHE STRING "" FORCE)
+endif()
+
+# ------------------------------------------------------------------------------
+# Feature checks
+# ------------------------------------------------------------------------------
 include(CheckLibraryExists)
 check_library_exists(rt clock_gettime "time.h" CONFIG_SYSTEM_HAS_CLOCK_GETTIME)
 
-# check if we are on a little or a big endian
-include (TestBigEndian)
+include(TestBigEndian)
 test_big_endian(PLATFORM_IS_BIGENDIAN)
 
-option(DEBUG "Enable debugging" ON)
-#option(DEBUG "Enable debugging" ON)
-option(BUILD_PLUGINS "Build the plugins" ON)
+# ------------------------------------------------------------------------------
+# libiec61850 (local, non-installed)
+# ------------------------------------------------------------------------------
+set(IEC61850_ROOT "" CACHE PATH "Path to libiec61850 build or install root")
 
-
-include_directories(
-    ./inc
+find_path(IEC61850_INCLUDE_DIR
+    NAMES libiec61850/iec61850_server.h
+    PATHS
+        ${IEC61850_ROOT}/include
 )
 
+find_library(IEC61850_LIBRARY
+    NAMES iec61850
+    PATHS
+        ${IEC61850_ROOT}/lib
+)
+
+if(NOT IEC61850_LIBRARY OR NOT IEC61850_INCLUDE_DIR)
+    message(FATAL_ERROR
+        "libiec61850 not found. Set -DIEC61850_ROOT=/path/to/libiec61850"
+    )
+endif()
+
+
+# ------------------------------------------------------------------------------
+# Sources
+# ------------------------------------------------------------------------------
 set(open_server_SRCS
-   input/inputs.c
-   model/config_file_parser_extensions.c
-   model/dynamic_model_extensions.c
-   LNs/SMVPublisher.c
-   LNs/LNParse.c
-   LNs/CILO.c
-   LNs/CSWI.c
-   LNs/MMXU.c
-   LNs/PTOC.c
-   LNs/PIOC.c
-   LNs/PDIF.c
-   LNs/PDIS.c
-   LNs/PTRC.c
-   LNs/RADR.c
-   LNs/RBDR.c
-   LNs/RDRE.c
-   LNs/XCBR.c
-   LNs/XSWI.c
-   LNs/LLN0.c
-   LNs/TVTR.c
-   LNs/TCTR.c
-   LNs/RREC.c
+    utils/string_utilities.c
+    input/inputs.c
+    model/config_file_parser_extensions.c
+    model/dynamic_model_extensions.c
 
-   open_server.c
+    LNs/SMVPublisher.c
+    LNs/LNParse.c
+    LNs/CILO.c
+    LNs/CSWI.c
+    LNs/MMXU.c
+    LNs/PTOC.c
+    LNs/PIOC.c
+    LNs/PDIF.c
+    LNs/PDIS.c
+    LNs/PTRC.c
+    LNs/RADR.c
+    LNs/RBDR.c
+    LNs/RDRE.c
+    LNs/XCBR.c
+    LNs/XSWI.c
+    LNs/LLN0.c
+    LNs/TVTR.c
+    LNs/TCTR.c
+    LNs/RREC.c
+
+    open_server.c
 )
 
-if(DEBUG)
-  set(CMAKE_BUILD_TYPE Debug)
-endif(DEBUG)
+# ------------------------------------------------------------------------------
+# Target
+# ------------------------------------------------------------------------------
+add_executable(open_server ${open_server_SRCS})
 
-if(BUILD_PLUGINS)
-    add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/plugin_src)
-endif(BUILD_PLUGINS)
-
-add_executable(open_server
-  ${open_server_SRCS}
-)
-
-set_target_properties( open_server
-    PROPERTIES
-    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
-    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+target_include_directories(open_server PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/inc
+    ${IEC61850_INCLUDE_DIR}
 )
 
 target_link_libraries(open_server
-    libiec61850.so
-    libiec61850.a
-    libhal.a
-    libhal-shared.a
+    ${IEC61850_LIBRARY}
     pthread
     dl
     m
 )
 
-# NOTE: this project uses a dual license scheme, as libiec61850 is covered by GPL 3.0
-# this means that any software that incorporates this library should adhere to GPL 3.0 as well
-# however, the circuit-simulator does not use libiec61850, and therefore this is apache licensed
-# the circuit-simulator should normally be run on a separate, non-realtime test machine, and is 
-# therefore ommitted from the install script
-install ( TARGETS open_server DESTINATION ${CMAKE_PROJECT_NAME} COMPONENT Applications)
+# ------------------------------------------------------------------------------
+# Runtime library search path (no install needed)
+# ------------------------------------------------------------------------------
+set_target_properties(open_server PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+    BUILD_RPATH "${IEC61850_ROOT}/build/src"
+)
 
-install ( FILES Dockerfile.libiec61850_server DESTINATION ${CMAKE_PROJECT_NAME} COMPONENT Data)
+# ------------------------------------------------------------------------------
+# Plugins
+# ------------------------------------------------------------------------------
+if(BUILD_PLUGINS)
+    add_subdirectory(plugin_src)
+endif()
 
-install ( FILES make_model.sh DESTINATION ${CMAKE_PROJECT_NAME} 
-    PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ
+# ------------------------------------------------------------------------------
+# Install
+# ------------------------------------------------------------------------------
+install(TARGETS open_server
+    DESTINATION ${CMAKE_PROJECT_NAME}
+    COMPONENT Applications
+)
+
+install(FILES
+    Dockerfile.libiec61850_server
+    README.md
+    COPYING
+    DESTINATION ${CMAKE_PROJECT_NAME}
     COMPONENT Data
 )
-install ( FILES make_compose.sh DESTINATION ${CMAKE_PROJECT_NAME} 
-    PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ
+
+install(PROGRAMS
+    make_model.sh
+    make_compose.sh
+    DESTINATION ${CMAKE_PROJECT_NAME}
     COMPONENT Data
 )
-install ( FILES README.md DESTINATION ${CMAKE_PROJECT_NAME} COMPONENT Data )
 
-install ( FILES COPYING DESTINATION ${CMAKE_PROJECT_NAME} COMPONENT Data )
-
-install ( FILES model_input_generator/genconfig.jar
-    DESTINATION ${CMAKE_PROJECT_NAME}/model_input_generator 
-    PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ GROUP_WRITE WORLD_READ 
-    COMPONENT Data
-)
-install ( FILES model_input_generator/genconfig_input.jar 
+install(FILES
+    model_input_generator/genconfig.jar
+    model_input_generator/genconfig_input.jar
+    model_input_generator/gendocker.jar
     DESTINATION ${CMAKE_PROJECT_NAME}/model_input_generator
-    PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ GROUP_WRITE WORLD_READ 
-    COMPONENT Data
-)
-install ( FILES model_input_generator/gendocker.jar
-    DESTINATION ${CMAKE_PROJECT_NAME}/model_input_generator
-    PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ GROUP_WRITE WORLD_READ 
     COMPONENT Data
 )
 
-install ( DIRECTORY cfg DESTINATION ${CMAKE_PROJECT_NAME} COMPONENT Data )
-install ( DIRECTORY scd DESTINATION ${CMAKE_PROJECT_NAME} COMPONENT Data ) 
-install ( DIRECTORY schema DESTINATION ${CMAKE_PROJECT_NAME} COMPONENT Data ) 
+install(DIRECTORY
+    cfg
+    scd
+    schema
+    DESTINATION ${CMAKE_PROJECT_NAME}
+    COMPONENT Data
+)
 
-
+# ------------------------------------------------------------------------------
+# CPack
+# ------------------------------------------------------------------------------
 set(CPACK_PACKAGE_DESCRIPTION "IEC 61850 open server")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "IEC 61850 open server")
 set(CPACK_PACKAGE_VENDOR "https://github.com/robidev")
 set(CPACK_PACKAGE_CONTACT "robin.dev@gmail.com")
-set(CPACK_PACKAGE_VERSION_MAJOR "${PROJECT_VERSION_MAJOR}")
-set(CPACK_PACKAGE_VERSION_MINOR "${PROJECT_VERSION_MINOR}")
-set(CPACK_PACKAGE_VERSION_PATCH "${PROJECT_VERSION_PATCH}")
-set(CPACK_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}_${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}_${CMAKE_SYSTEM_PROCESSOR}")
-set(CPACK_SOURCE_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}_${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}")
+set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
+set(CPACK_PACKAGE_FILE_NAME
+    "${CMAKE_PROJECT_NAME}_${PROJECT_VERSION}_${CMAKE_SYSTEM_PROCESSOR}"
+)
 
 set(CPACK_COMPONENTS_ALL Applications Data)
-set(CPACK_PACKAGE_INSTALL_DIRECTORY "${CMAKE_INSTALL_PREFIX}/${CMAKE_PROJECT_NAME}")
+set(CPACK_PACKAGE_INSTALL_DIRECTORY
+    "${CMAKE_INSTALL_PREFIX}/${CMAKE_PROJECT_NAME}"
+)
 
-if(EXISTS "${CMAKE_ROOT}/Modules/CPack.cmake")
-    include(InstallRequiredSystemLibraries)
-
-    include(CPack)
-endif(EXISTS "${CMAKE_ROOT}/Modules/CPack.cmake")
-
-
+include(InstallRequiredSystemLibraries)
+include(CPack)

@@ -27,8 +27,8 @@ def main(server_instance):
     print("PYTHON_APP: found mms_pos data ref @IED1_XCBRGenericIO/XCBR1.Pos.stVal")
 
     # register a callback for when a DA is updated
-    #cbRef = python_plugin.callBackFunction(cb)
-    #python_plugin.registerDaCallback(srv,"IED1_XCBRGenericIO/XCBR1.Pos.stVal",cbRef,42)
+    cbRef = python_plugin.callBackFunction(cb)
+    python_plugin.registerDaCallback(srv,"IED1_XCBRGenericIO/XCBR1.Pos.stVal",cbRef,42)
 
     # cast the type to the correct MmsValue* type for use by libiec61850
     pos = ctypes.cast(mms_pos,ctypes.POINTER(lib61850.struct_sMmsValue ) )

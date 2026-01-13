@@ -1,11 +1,14 @@
 
+find_package(Python3 REQUIRED COMPONENTS Development)
+
 set(python_SRCS
    main.c
 )
 
 include_directories(
-    ./inc
-    /usr/include/python3.11
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../inc
+    ${Python3_INCLUDE_DIRS}
+    ${IEC61850_INCLUDE_DIR}
 )
 
 add_library(python SHARED
@@ -14,7 +17,8 @@ add_library(python SHARED
 
 target_link_libraries(python
     pthread
-    python3.11
+    ${Python3_LIBRARIES}
+    ${IEC61850_LIBRARY}
 )
 
 set_target_properties( python

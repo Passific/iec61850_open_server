@@ -60,8 +60,7 @@ Feel free to ask questions and provide feedback using the Github issues. Github 
 
 This will allow you to just run the existing showcase.
 
-Make sure you have installed the nessecary dependancies (Git and Docker-compose):  
-`$ sudo apt install git docker-compose` 
+Make sure you have installed the nessecary dependancies (Git and Docker, docker compose)  
 
 Create a working folder, e.g. substation;  
   
@@ -76,13 +75,13 @@ cd into the server project
 `$ cd iec61850_open_server`  
 
 Build the Docker containers. Note: this uses the relative path, `../iec61850_open_client` so ensure you have this set up correctly like indicated in step 1;  
-`$ sudo docker-compose -f substation.yml -f substation.simulator.yml build`  
+`$ sudo docker compose -f substation.yml -f substation.simulator.yml build`  
 
 Run the Docker compose file;  
-`$ sudo docker-compose -f substation.yml -f substation.simulator.yml up`  
+`$ sudo docker compose -f substation.yml -f substation.simulator.yml up`  
 
 To stop the Docker compose file;  
-`$ sudo docker-compose -f substation.yml -f substation.simulator.yml down`  
+`$ sudo docker compose -f substation.yml -f substation.simulator.yml down`  
 Other methodes to stop the docker-compose file to lead to issues at a restart.  
 
 open the client via the browser at;  

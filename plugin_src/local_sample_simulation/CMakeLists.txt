@@ -4,7 +4,8 @@ set(local_sample_simulation_SRCS
 )
 
 include_directories(
-    ./inc
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../inc
+    ${IEC61850_INCLUDE_DIR}
 )
 
 add_library(local_sample_simulation SHARED
