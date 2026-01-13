@@ -60,268 +60,240 @@ import com.libiec61850.scl.types.TypeDeclarations;
 
 public class SclParser 
 {
-    private List<IED> ieds;
-    private Communication communication;
-    private TypeDeclarations typeDeclarations;
-    
-    public static boolean withOutput = true;
-    
-    public TypeDeclarations getTypeDeclarations() {
-        return typeDeclarations;
-    }
+	private List<IED> ieds;
+	private Communication communication;
+	private TypeDeclarations typeDeclarations;
+	
+	public static boolean withOutput = true;
+	
+	public TypeDeclarations getTypeDeclarations() {
+		return typeDeclarations;
+	}
 
-    private Node scl;
-    
-    public SclParser(InputStream stream, boolean withOutput) throws SclParserException {
-        this.withOutput = withOutput;
-        
-        Document doc = parseXmlDocument(stream);
-        
-        scl = getRootNode(doc);
+	private Node scl;
+	
+	public SclParser(InputStream stream, boolean withOutput) throws SclParserException {
+		this.withOutput = withOutput;
+		
+		Document doc = parseXmlDocument(stream);
+		
+		scl = getRootNode(doc);
 
-        if (withOutput)
-            System.out.println("parse data type templates ...");
-        
-        typeDeclarations = parseTypeDeclarations();
+		if (withOutput)
+			System.out.println("parse data type templates ...");
+		
+		typeDeclarations = parseTypeDeclarations();
 
-        if (withOutput)
-            System.out.println("parse IED section ...");
-        
-        parseIedSections();
+		if (withOutput)
+			System.out.println("parse IED section ...");
+		
+		parseIedSections();
 
-        if (withOutput)
-            System.out.println("parse communication section ...");
-        
-        communication = parseCommunicationSection();
-        
-        if (communication == null)
-            if (withOutput)
-                System.out.println("WARNING: No communication section found!");
-    }
+		if (withOutput)
+			System.out.println("parse communication section ...");
+		
+		communication = parseCommunicationSection();
+		
+		if (communication == null)
+			if (withOutput)
+				System.out.println("WARNING: No communication section found!");
+	}
 
-    public SclParser(InputStream stream) throws SclParserException {
-        this(stream, true);
-    }
+	public SclParser(InputStream stream) throws SclParserException {
+		this(stream, true);
+	}
 
-    public IED getIedByName(String iedName) {
-    	for (IED ied : ieds) {
-    		if (ied.getName().equals(iedName))
-    			return ied;
-    	}
-    	
-        return null;
-    }
-    
-    public Collection<IED> getIeds()
-    {
-        return ieds;
-    }
-    
-    public IED getFirstIed() {
-    	return ieds.get(0);
-    }
+	public IED getIedByName(String iedName) {
+		for (IED ied : ieds) {
+			if (ied.getName().equals(iedName))
+				return ied;
+		}
+		
+		return null;
+	}
+	
+	public Collection<IED> getIeds()
+	{
+		return ieds;
+	}
+	
+	public IED getFirstIed() {
+		return ieds.get(0);
+	}
 
-    public Communication getCommunication() {
-        return communication;
-    }
+	public Communication getCommunication() {
+		return communication;
+	}
 
-    public static Document parseXmlWithLineNumberInformation(InputStream xmlInputStream) throws IOException, SAXException {
-        final Document xmlDocument;
+	public static Document parseXmlWithLineNumberInformation(InputStream xmlInputStream) throws IOException, SAXException {
+		final Document xmlDocument;
 
-        SAXParser saxParser;
+		SAXParser saxParser;
 
-        try {
-            SAXParserFactory factory = SAXParserFactory.newInstance();
-            saxParser = factory.newSAXParser();
-            DocumentBuilderFactory docBuilderFactory = DocumentBuilderFactory.newInstance();
-            DocumentBuilder documentBuilder = docBuilderFactory.newDocumentBuilder();
-            xmlDocument = documentBuilder.newDocument();
-        } catch (ParserConfigurationException e) {
-            throw new RuntimeException(e);
-        }
+		try {
+			SAXParserFactory factory = SAXParserFactory.newInstance();
+			saxParser = factory.newSAXParser();
+			DocumentBuilderFactory docBuilderFactory = DocumentBuilderFactory.newInstance();
+			DocumentBuilder documentBuilder = docBuilderFactory.newDocumentBuilder();
+			xmlDocument = documentBuilder.newDocument();
+		} catch (ParserConfigurationException e) {
+			throw new RuntimeException(e);
+		}
 
-        final Stack<Element> elementStack = new Stack<Element>();
+		final Stack<Element> elementStack = new Stack<Element>();
 
-        DefaultHandler handler = new DefaultHandler() {
+		DefaultHandler handler = new DefaultHandler() {
 
-            private Locator documentLocator;
+			private Locator documentLocator;
 
-            private StringBuilder textNodeContent = new StringBuilder();
+			private StringBuilder textNodeContent = new StringBuilder();
 
-            @Override
-            public void setDocumentLocator(Locator locator) {
-                documentLocator = locator;
-            }
+			@Override
+			public void setDocumentLocator(Locator locator) {
+				documentLocator = locator;
+			}
 
-            @Override
-            public void startElement(String uri, String localName, String qName, Attributes attributes) throws SAXException {
+			@Override
+			public void startElement(String uri, String localName, String qName, Attributes attributes) throws SAXException {
 
-                if (textNodeContent.length() > 0)
-                    createTextNode();
+				if (textNodeContent.length() > 0)
+					createTextNode();
 
-                Element element = xmlDocument.createElement(qName);
+				Element element = xmlDocument.createElement(qName);
 
-                element.setUserData("START_LINE_NUMBER_ATTR", new Integer(documentLocator.getLineNumber()), null);
-                element.setUserData("START_COLUMN_NUMBER_ATTR", new Integer(documentLocator.getColumnNumber()), null);
+				element.setUserData("START_LINE_NUMBER_ATTR", new Integer(documentLocator.getLineNumber()), null);
+				element.setUserData("START_COLUMN_NUMBER_ATTR", new Integer(documentLocator.getColumnNumber()), null);
 
-                for (int i = 0; i < attributes.getLength(); i++) {
-                    element.setAttribute(attributes.getQName(i), attributes.getValue(i));
-                }
+				for (int i = 0; i < attributes.getLength(); i++) {
+					element.setAttribute(attributes.getQName(i), attributes.getValue(i));
+				}
 
-                elementStack.push(element);
-            }
+				elementStack.push(element);
+			}
 
-            @Override
-            public void endElement(String uri, String localName, String qName) {
+			@Override
+			public void endElement(String uri, String localName, String qName) {
 
-                if (textNodeContent.length() > 0)
-                    createTextNode();
+				if (textNodeContent.length() > 0)
+					createTextNode();
 
-                Element element = elementStack.pop();
+				Element element = elementStack.pop();
 
-                element.setUserData("END_LINE_NUMBER_ATTR", new Integer(documentLocator.getLineNumber()), null);
-                element.setUserData("END_COLUMN_NUMBER_ATTR", new Integer(documentLocator.getColumnNumber()), null);
+				element.setUserData("END_LINE_NUMBER_ATTR", new Integer(documentLocator.getLineNumber()), null);
+				element.setUserData("END_COLUMN_NUMBER_ATTR", new Integer(documentLocator.getColumnNumber()), null);
 
-                if (elementStack.isEmpty())
-                    xmlDocument.appendChild(element);
-                else {
-                    Element parentElement = elementStack.peek();
-                    parentElement.appendChild(element);
-                }
-            }
+				if (elementStack.isEmpty())
+					xmlDocument.appendChild(element);
+				else {
+					Element parentElement = elementStack.peek();
+					parentElement.appendChild(element);
+				}
+			}
 
-            @Override
-            public void characters(char ch[], int start, int length) throws SAXException {
-                textNodeContent.append(ch, start, length);
-            }
+			@Override
+			public void characters(char ch[], int start, int length) throws SAXException {
+				textNodeContent.append(ch, start, length);
+			}
 
-            private void createTextNode() {
-                Element element = elementStack.peek();
-                Node textNode = xmlDocument.createTextNode(textNodeContent.toString());
-                element.appendChild(textNode);
-                textNodeContent.delete(0, textNodeContent.length());
-            }
-        };
+			private void createTextNode() {
+				Element element = elementStack.peek();
+				Node textNode = xmlDocument.createTextNode(textNodeContent.toString());
+				element.appendChild(textNode);
+				textNodeContent.delete(0, textNodeContent.length());
+			}
+		};
 
-        saxParser.parse(xmlInputStream, handler);
+		saxParser.parse(xmlInputStream, handler);
 
-        return xmlDocument;
-    }
+		return xmlDocument;
+	}
 
-    private Document parseXmlDocument(InputStream stream) throws SclParserException {
-        Document xmlDocument = null;
+	private Document parseXmlDocument(InputStream stream) throws SclParserException {
+		Document xmlDocument = null;
 
-        try {
-            xmlDocument = parseXmlWithLineNumberInformation(stream);
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        } catch (SAXException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
+		try {
+			xmlDocument = parseXmlWithLineNumberInformation(stream);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (SAXException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
-        return xmlDocument;
-    }
+		return xmlDocument;
+	}
 
-    private Communication parseCommunicationSection() throws SclParserException {
+	private Communication parseCommunicationSection() throws SclParserException {
 
-        Node comSection = ParserUtils.getChildNodeWithTag(scl, "Communication");
-        
-        Communication com = null;
+		Node comSection = ParserUtils.getChildNodeWithTag(scl, "Communication");
+		
+		Communication com = null;
 
-        if (comSection != null)
-        	com = new Communication(comSection);
+		if (comSection != null)
+			com = new Communication(comSection);
 
-        return com;
-    }
+		return com;
+	}
 
-    private void parseIedSections() throws SclParserException {
-    	
-        List<Node> iedNodes = ParserUtils.getChildNodesWithTag(scl, "IED");
-        
-        ieds = new LinkedList<IED>();
-        
-        for (Node iedNode : iedNodes)   
-        	ieds.add(new IED(iedNode, typeDeclarations));
-    }
+	private void parseIedSections() throws SclParserException {
+		
+		List<Node> iedNodes = ParserUtils.getChildNodesWithTag(scl, "IED");
+		
+		ieds = new LinkedList<IED>();
+		
+		for (Node iedNode : iedNodes)   
+			ieds.add(new IED(iedNode, typeDeclarations));
+	}
 
-    private TypeDeclarations parseTypeDeclarations() throws SclParserException {
-        TypeDeclarations typeDeclarations = new TypeDeclarations();
+	private TypeDeclarations parseTypeDeclarations() throws SclParserException {
+		TypeDeclarations typeDeclarations = new TypeDeclarations();
 
-        Node dataTypeTemplateSection = ParserUtils.getChildNodeWithTag(scl, "DataTypeTemplates");
+		Node dataTypeTemplateSection = ParserUtils.getChildNodeWithTag(scl, "DataTypeTemplates");
 
-        if (dataTypeTemplateSection == null)
-        	throw new SclParserException("No DataTypeTemplates section found in SCL file!");
-        
-        NodeList typeTemplates = dataTypeTemplateSection.getChildNodes();
+		if (dataTypeTemplateSection == null)
+			throw new SclParserException("No DataTypeTemplates section found in SCL file!");
+		
+		NodeList typeTemplates = dataTypeTemplateSection.getChildNodes();
 
-        for (int i = 0; i < typeTemplates.getLength(); i++) {
-            Node element = typeTemplates.item(i);
+		for (int i = 0; i < typeTemplates.getLength(); i++) {
+			Node element = typeTemplates.item(i);
 
-            String nodeName = element.getNodeName();
+			String nodeName = element.getNodeName();
 
-            if (nodeName.equals("LNodeType"))
-                typeDeclarations.addType(new LogicalNodeType(element));
-            else if (nodeName.equals("DOType"))
-                typeDeclarations.addType(new DataObjectType(element));
-            else if (nodeName.equals("DAType"))
-                typeDeclarations.addType(new DataAttributeType(element));
-            else if (nodeName.equals("EnumType"))
-                typeDeclarations.addType(new EnumerationType(element));
-        }
+			if (nodeName.equals("LNodeType"))
+				typeDeclarations.addType(new LogicalNodeType(element));
+			else if (nodeName.equals("DOType"))
+				typeDeclarations.addType(new DataObjectType(element));
+			else if (nodeName.equals("DAType"))
+				typeDeclarations.addType(new DataAttributeType(element));
+			else if (nodeName.equals("EnumType"))
+				typeDeclarations.addType(new EnumerationType(element));
+		}
 
-        return typeDeclarations;
-    }
-    
-    private static Node getRootNode(Document doc) throws SclParserException {
-        NodeList sclSections = doc.getElementsByTagName("SCL");
-        
-        if (sclSections.getLength() != 1)
-            throw new SclParserException("Document contains more then one SCL section!");
+		return typeDeclarations;
+	}
+	
+	private static Node getRootNode(Document doc) throws SclParserException {
+		NodeList sclSections = doc.getElementsByTagName("SCL");
+		
+		if (sclSections.getLength() != 1)
+			throw new SclParserException("Document contains more then one SCL section!");
 
-        return sclSections.item(0);
-    }
+		return sclSections.item(0);
+	}
 
-    public static void main(String[] args) throws FileNotFoundException, SclParserException {
-        String fileName = args[0];
+	public static void main(String[] args) throws FileNotFoundException, SclParserException {
+		String fileName = args[0];
 
-        InputStream stream = new FileInputStream(fileName);
+		InputStream stream = new FileInputStream(fileName);
 
-        SclParser sclParser = new SclParser(stream);
-    }
+		SclParser sclParser = new SclParser(stream);
+	}
 
-    public ConnectedAP getConnectedAP(IED ied, String accessPointName) {
-        communication = this.getCommunication();
-
-        if (communication != null) {
-            List<SubNetwork> subNetworks = communication.getSubNetworks();
-
-            for (SubNetwork subNetwork : subNetworks) {
-                List<ConnectedAP> connectedAPs = subNetwork.getConnectedAPs();
-
-                for (ConnectedAP connectedAP : connectedAPs) {
-                    if (connectedAP.getIedName().equals(ied.getName())) {
-
-                        if (connectedAP.getApName().equals(accessPointName)) {
-
-                            if (withOutput)
-                                System.out.println("Found connectedAP " + accessPointName + " for IED " + ied.getName());
-
-                            return connectedAP;
-                        }
-
-                    }
-                }
-
-            }
-        }
-
-        return null;
-    }
-
-    public ConnectedAP getConnectedAP(String iedName, String accessPointName) {
-        communication = this.getCommunication();
+	public List<ConnectedAP> getConnectedAPs()
+	{
+        List<ConnectedAP> aps = new LinkedList<ConnectedAP>();
 
         if (communication != null) {
             List<SubNetwork> subNetworks = communication.getSubNetworks();
@@ -330,22 +302,69 @@ public class SclParser
                 List<ConnectedAP> connectedAPs = subNetwork.getConnectedAPs();
 
                 for (ConnectedAP connectedAP : connectedAPs) {
-                    if (connectedAP.getIedName().equals(iedName)) {
-
-                        if (connectedAP.getApName().equals(accessPointName)) {
-
-                            if (withOutput)
-                                System.out.println("Found connectedAP " + accessPointName + " for IED " + iedName);
-
-                            return connectedAP;
-                        }
-
-                    }
+                    aps.add(connectedAP);
                 }
-
             }
         }
 
-        return null;
+        return aps;
     }
+
+	public ConnectedAP getConnectedAP(IED ied, String accessPointName) {
+		communication = this.getCommunication();
+
+		if (communication != null) {
+			List<SubNetwork> subNetworks = communication.getSubNetworks();
+
+			for (SubNetwork subNetwork : subNetworks) {
+				List<ConnectedAP> connectedAPs = subNetwork.getConnectedAPs();
+
+				for (ConnectedAP connectedAP : connectedAPs) {
+					if (connectedAP.getIedName().equals(ied.getName())) {
+
+						if (connectedAP.getApName().equals(accessPointName)) {
+
+							if (withOutput)
+								System.out.println("Found connectedAP " + accessPointName + " for IED " + ied.getName());
+
+							return connectedAP;
+						}
+
+					}
+				}
+
+			}
+		}
+
+		return null;
+	}
+
+	public ConnectedAP getConnectedAP(String iedName, String accessPointName) {
+		communication = this.getCommunication();
+
+		if (communication != null) {
+			List<SubNetwork> subNetworks = communication.getSubNetworks();
+
+			for (SubNetwork subNetwork : subNetworks) {
+				List<ConnectedAP> connectedAPs = subNetwork.getConnectedAPs();
+
+				for (ConnectedAP connectedAP : connectedAPs) {
+					if (connectedAP.getIedName().equals(iedName)) {
+
+						if (connectedAP.getApName().equals(accessPointName)) {
+
+							if (withOutput)
+								System.out.println("Found connectedAP " + accessPointName + " for IED " + iedName);
+
+							return connectedAP;
+						}
+
+					}
+				}
+
+			}
+		}
+
+		return null;
+	}
 }

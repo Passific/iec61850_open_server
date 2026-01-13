@@ -167,70 +167,98 @@ public class LogicalNode implements DataModelNode {
 
         for (Node doiNode : doiNodes) {
             String doiName = ParserUtils.parseAttribute(doiNode, "name");
-
+            
+            int idx = -1;
+            
+            String ixAttr = ParserUtils.parseAttribute(doiNode, "ix");
+            
+            if (ixAttr != null) {
+                try {
+                    idx = Integer.decode(ixAttr);
+                }
+                catch (NumberFormatException ex)
+                {
+                    throw new SclParserException(doiNode, "Invalid ix attribute in \"" + doiName + "\"");
+                }
+            }
+            
             DataObject dataObject = (DataObject) getChildByName(doiName);
-
+            
             if (dataObject == null)
                 throw new SclParserException(doiNode, "Missing data object with name \"" + doiName + "\"");
-
-            parseDataAttributeNodes(doiNode, dataObject);
-
+            
+            parseDataAttributeNodes(doiNode, dataObject, idx);
+            
             parseSubDataInstances(doiNode, dataObject);
         }
     }
 
-	private void parseDataAttributeNodes(Node doiNode, DataModelNode dataObject)
-			throws SclParserException {
-		List<Node> daiNodes = ParserUtils.getChildNodesWithTag(doiNode, "DAI");
+    private void parseDataAttributeNodes(Node doiNode, DataModelNode dataObject, int parendIdx)
+            throws SclParserException {
+	List<Node> daiNodes = ParserUtils.getChildNodesWithTag(doiNode, "DAI");
 
-		for (Node daiNode : daiNodes) {
-		    String daiName = ParserUtils.parseAttribute(daiNode, "name");
+	for (Node daiNode : daiNodes) {
+	    String daiName = ParserUtils.parseAttribute(daiNode, "name");
 
-		    DataAttribute dataAttribute = (DataAttribute) dataObject.getChildByName(daiName);
+	    int idx = parendIdx;
+		    
+            String ixAttr = ParserUtils.parseAttribute(doiNode, "ix");
+            
+            if (ixAttr != null) {
+                try {
+                    idx = Integer.decode(ixAttr);
+                }
+                catch (NumberFormatException ex)
+                {
+                    throw new SclParserException(doiNode, "Invalid ix attribute in \"" + daiName + "\"");
+                }
+            }
 
-		    if (dataAttribute == null)
-		        throw new SclParserException(daiNode, "Missing data attribute with name \"" + daiName + "\"");
+	    DataAttribute dataAttribute = (DataAttribute) dataObject.getChildByName(daiName);
 
-		    Node valNode = ParserUtils.getChildNodeWithTag(daiNode, "Val");
+	    if (dataAttribute == null)
+	        throw new SclParserException(daiNode, "Missing data attribute with name \"" + daiName + "\"");
 
-		    if (valNode != null) {
-		        String value = valNode.getTextContent();
+	    Node valNode = ParserUtils.getChildNodeWithTag(daiNode, "Val");
 
-		        try {
-		            dataAttribute.setValue(new DataModelValue(dataAttribute.getType(), dataAttribute.getSclType(), value));
-		        } catch (IllegalValueException e) {
-		            throw new SclParserException(valNode, e.getMessage());
-		        }
-		    }
+	    if (valNode != null) {
+	        String value = valNode.getTextContent();
 
-		    String shortAddress = ParserUtils.parseAttribute(daiNode, "sAddr");
+	        try {
+	            dataAttribute.setValue(new DataModelValue(dataAttribute.getType(), dataAttribute.getSclType(), value));
+	        } catch (IllegalValueException e) {
+	            throw new SclParserException(valNode, e.getMessage());
+	        }
+	    }
 
-		    if (shortAddress != null) {
+	    String shortAddress = ParserUtils.parseAttribute(daiNode, "sAddr");
+
+	    if (shortAddress != null) {
 		    	
-		    	if (!shortAddress.equals(""))
-			        dataAttribute.setShortAddress(shortAddress);
-		    }
+	    	if (!shortAddress.equals(""))
+	            dataAttribute.setShortAddress(shortAddress);
+	    }
 
-		}
 	}
+    }
 
-	private void parseSubDataInstances(Node doiNode, DataModelNode dataObject)
-			throws SclParserException {
-		List<Node> sdiNodes = ParserUtils.getChildNodesWithTag(doiNode, "SDI");
+    private void parseSubDataInstances(Node doiNode, DataModelNode dataObject)
+	    throws SclParserException {
+	List<Node> sdiNodes = ParserUtils.getChildNodesWithTag(doiNode, "SDI");
 
-		for (Node sdiNode : sdiNodes) {
-		    String sdiName = ParserUtils.parseAttribute(sdiNode, "name");
+	for (Node sdiNode : sdiNodes) {
+	    String sdiName = ParserUtils.parseAttribute(sdiNode, "name");
 
-		    DataModelNode subDataAttribute = dataObject.getChildByName(sdiName);
+	    DataModelNode subDataAttribute = dataObject.getChildByName(sdiName);
 
-		    if (subDataAttribute == null)
-		        System.out.println("subelement with name " + sdiName + " not found!");
+	    if (subDataAttribute == null)
+	        System.out.println("subelement with name " + sdiName + " not found!");
 		    
-		    parseDataAttributeNodes(sdiNode, subDataAttribute);
-		    
-		    parseSubDataInstances(sdiNode,  subDataAttribute);
-		}
+	    parseDataAttributeNodes(sdiNode, subDataAttribute, -1);
+	    
+	    parseSubDataInstances(sdiNode,  subDataAttribute);
 	}
+    }
 
     public String getLnClass() {
         return lnClass;
